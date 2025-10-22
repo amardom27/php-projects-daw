@@ -105,15 +105,15 @@ mysqli_close($conexion);
     <?php endif; ?>
 
     <?php if (isset($_POST["btnConfirmar"])): ?>
-        <p><?= $_POST["h-nombre"] ?> se ha borrado con éxito.</p>
+        <p><?= $_POST["hid-nombre"] ?> se ha borrado con éxito.</p>
     <?php endif; ?>
 
     <?php if (isset($_POST["btnBorrar"])): ?>
         <p>¿Estás seguro de que quieres borrar a <strong><?= $_POST["btnBorrar"] ?></strong>?</p>
         <form action="index.php" method="post">
-            <button type="submit" name="btnConfirmar" value="<?= $_POST["id"] ?>">Continuar</button>
+            <button type="submit" name="btnConfirmar" value="<?= $_POST["hid-id"] ?>">Continuar</button>
             <button type="submit">Cancelar</button>
-            <input type="hidden" name="h-nombre" value="<?= $_POST["btnBorrar"] ?>">
+            <input type="hidden" name="hid-nombre" value="<?= $_POST["btnBorrar"] ?>">
         </form>
     <?php endif; ?>
     <h3>Listado de los usuarios</h3>
@@ -139,7 +139,7 @@ mysqli_close($conexion);
                             <button class="btn" type="submit" name="btnEditar" value="<?= $tupla["nombre"] ?>">Editar</button>
                             -
                             <button class="btn" type="submit" name="btnBorrar" value="<?= $tupla["nombre"] ?>">Borrar</button>
-                            <input type="hidden" name="id" value="<?= $tupla["id_usuario"] ?>">
+                            <input type="hidden" name="hid-id" value="<?= $tupla["id_usuario"] ?>">
                         </form>
                     </td>
                 </tr>
