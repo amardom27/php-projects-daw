@@ -1,5 +1,9 @@
 <?php
+
+use Dom\Mysql;
+
 const NOMBRE = "bd_cv";
+const NOMBRE_NO_IMAGEN = "no_image.webp";
 require("../const_globales/env.php");
 
 function error_page($title, $body) {
@@ -25,6 +29,19 @@ try {
     die(error_page("Practica BBDD", "<p>Error, no se ha podido conectar a la base de datos " . $e->getMessage()));
 }
 
+// Borrado de la base de datos
+if (isset($_POST["btnConfBorrar"])) {
+    try {
+        $consulta = "delete from usuarios where id_usuario = " . $_POST["btnConfBorrar"];
+        $resultado_detalle = mysqli_query($conexion, $consulta);
+    } catch (Exception $e) {
+        mysqli_close($conexion);
+        die(error_page("Practica BBDD", "<p>Error, no se ha podido realizar la consulta de los detalles " . $e->getMessage()));
+    }
+
+    // TODO: borrar la foto
+}
+
 // Realizamos la consulta a la base de datos
 try {
     $consulta = "select id_usuario, nombre, foto from usuarios";
@@ -35,19 +52,15 @@ try {
 }
 
 // Realizamos la consulta de los detalles si se ha pulsado el boton
-if (isset($_POST["btnDetalle"])) {
-    try {
-        $consulta = "select * from usuarios where id_usuario = " . $_POST["btnDetalle"];
-        $resultado_detalle = mysqli_query($conexion, $consulta);
-    } catch (Exception $e) {
-        mysqli_close($conexion);
-        die(error_page("Practica BBDD", "<p>Error, no se ha podido realizar la consulta de los detalles " . $e->getMessage()));
+if (isset($_POST["btnDetalle"]) || isset($_POST["btnBorrar"])) {
+    if (isset($_POST["btnDetalle"])) {
+        $id_us = $_POST["btnDetalle"];
+    } else {
+        $id_us = $_POST["btnBorrar"];
     }
-}
 
-if (isset($_POST["btnConfirmar"])) {
     try {
-        $consulta = "delete from usuarios where id_usuario = " . $_POST["btnConfirmar"];
+        $consulta = "select * from usuarios where id_usuario = " . $id_us;
         $resultado_detalle = mysqli_query($conexion, $consulta);
     } catch (Exception $e) {
         mysqli_close($conexion);
@@ -104,17 +117,35 @@ mysqli_close($conexion);
         <?php require "vistas/vista-detalle.php" ?>
     <?php endif; ?>
 
-    <?php if (isset($_POST["btnConfirmar"])): ?>
-        <p><?= $_POST["hid-nombre"] ?> se ha borrado con éxito.</p>
+    <?php if (isset($_POST["btnConfBorrar"])): ?>
+        <p><strong><?= $_POST["hid-nombre"] ?></strong> se ha borrado con éxito.</p>
+        <form action="index.php">
+            <button type="submit">Atrás</button>
+        </form>
     <?php endif; ?>
 
     <?php if (isset($_POST["btnBorrar"])): ?>
-        <p>¿Estás seguro de que quieres borrar a <strong><?= $_POST["btnBorrar"] ?></strong>?</p>
-        <form action="index.php" method="post">
-            <button type="submit" name="btnConfirmar" value="<?= $_POST["hid-id"] ?>">Continuar</button>
-            <button type="submit">Cancelar</button>
-            <input type="hidden" name="hid-nombre" value="<?= $_POST["btnBorrar"] ?>">
-        </form>
+        <?php
+        if (mysqli_num_rows($resultado_detalle)):
+            $tupla = mysqli_fetch_assoc($resultado_detalle)
+        ?>
+            <h3>Borrado de usuario con el id: <?= $tupla["id_usuario"] ?></h3>
+            <p>¿Estás seguro de que quieres borrar a <strong><?= $tupla["nombre"] ?></strong>?</p>
+            <form action="index.php" method="post">
+                <button type="submit" name="btnConfBorrar" value="<?= $tupla["id_usuario"] ?>">Continuar</button>
+                <button type="submit">Cancelar</button>
+                <input type="hidden" name="hid-nombre" value="<?= $tupla["nombre"] ?>">
+                <input type="hidden" name="hid-foto" value="<?= $tupla["foto"] ?>">
+            </form>
+        <?php
+        else:
+        ?>
+            <p>No hay ningún usuario en la base de datos para borrar.</p>
+        <?php
+        endif;
+        mysqli_free_result($resultado_detalle);
+        ?>
+
     <?php endif; ?>
     <h3>Listado de los usuarios</h3>
     <?php if (mysqli_num_rows($resultado_usuarios) > 0) : ?>
@@ -136,10 +167,9 @@ mysqli_close($conexion);
                     </td>
                     <td>
                         <form action="index.php" method="post">
-                            <button class="btn" type="submit" name="btnEditar" value="<?= $tupla["nombre"] ?>">Editar</button>
+                            <button class="btn" type="submit" name="btnEditar" value="<?= $tupla["id_usuario"] ?>">Editar</button>
                             -
-                            <button class="btn" type="submit" name="btnBorrar" value="<?= $tupla["nombre"] ?>">Borrar</button>
-                            <input type="hidden" name="hid-id" value="<?= $tupla["id_usuario"] ?>">
+                            <button class="btn" type="submit" name="btnBorrar" value="<?= $tupla["id_usuario"] ?>">Borrar</button>
                         </form>
                     </td>
                 </tr>
