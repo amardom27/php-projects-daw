@@ -1,25 +1,10 @@
 <?php
-
-use Dom\Mysql;
-
 const NOMBRE = "bd_cv";
 const NOMBRE_NO_IMAGEN = "no_image.webp";
 require("../const_globales/env.php");
 
-function error_page($title, $body) {
-    $html = '<!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>' . $title . '</title>
-            </head>
-            <body>
-            ' . $body . '
-            </body>
-            </html>';
-    return $html;
-}
+// Incluir las funciones
+require("./src/func_const.php");
 
 // Realizamos la conexion a la base de datos
 try {
@@ -28,6 +13,7 @@ try {
 } catch (Exception $e) {
     die(error_page("Practica BBDD", "<p>Error, no se ha podido conectar a la base de datos " . $e->getMessage()));
 }
+
 
 // Borrado de la base de datos
 if (isset($_POST["btnConfBorrar"])) {
@@ -65,6 +51,78 @@ if (isset($_POST["btnDetalle"]) || isset($_POST["btnBorrar"])) {
     } catch (Exception $e) {
         mysqli_close($conexion);
         die(error_page("Practica BBDD", "<p>Error, no se ha podido realizar la consulta de los detalles " . $e->getMessage()));
+    }
+}
+
+// Comprobar los datos del formulario para crear un usuario
+if (isset($_POST["btnContCrear"])) {
+    $error_nombre = $_POST["nombre"] == "";
+    $error_usuario = $_POST["usuario"] == "";
+
+    // Comprobar el usuario repetido
+    if (!$error_usuario) {
+        $error_usuario = repetido($conexion, "usuarios", "usuario", $_POST["usuario"]);
+
+        if (is_string($error_usuario)) {
+            mysqli_close($conexion);
+            die(error_page("Practica 8", "<p>Error, no se ha podido realizar la consulta " . $error_usuario));
+        }
+    }
+
+    $error_clave = $_POST["clave"] == "";
+    $error_dni = $_POST["dni"] == "" || !dni_bien_escrito($_POST["dni"]) || !dni_valido($_POST["dni"]);
+
+    // Comprobar el dni repetido
+    if (!$error_dni) {
+        $error_dni = repetido($conexion, "usuarios", "dni", strtoupper($_POST["dni"]));
+
+        if (is_string($error_dni)) {
+            mysqli_close($conexion);
+            die(error_page("Practica 8", "<p>Error, no se ha podido realizar la consulta " . $error_dni));
+        }
+    }
+
+    $error_foto = $_FILES["foto"]["name"] == ""
+        || $_FILES["foto"]["error"] // != 0 
+        || $_FILES["foto"]["size"] > 10 * 1024 * 1024 // Pasarlo a bits
+        || !tiene_extension($_FILES["foto"]["name"])
+        || !mi_getimagesize($_FILES["foto"]);
+
+    $error_form = $error_nombre || $error_usuario || $error_clave || $error_dni || $error_foto;
+
+    if (!$error_form) {
+        // Inserto con la imagen por defecto
+        // Si se ha subido una foto, movemos la foto y actulizamos el nombre de la foto en la base de datos (formato: img_id_extension)
+
+        try {
+            $consulta = "insert into usuarios (nombre, usuario, clave, dni, sexo, foto) 
+            values ('" . $_POST["nombre"] . "', '" . $_POST["usuario"] . "', '" . md5($_POST["clave"]) . " ', ' " . strtoupper($_POST["dni"]) . " ', ' " . $_POST["sexo"] . " ', no_image.webp)";
+        } catch (Exception $e) {
+            mysqli_close($conexion);
+            die(error_page("Practica 8", "<p>Error, no se ha podido realizar la consulta " . $e->getMessage()));
+        }
+
+        $mesaje_accion = "Usuario insertado con éxito";
+
+        if ($_FILES["foto"]["name"] != "") {
+            $ultimo_id = mysqli_insert_id($conexion);
+            $array_nombre = explode(".", $_FILES["foto"]["name"]);
+            $ext = "." . end($array_nombre);
+            $nombre_nuevo = "img_" . $ultimo_id . $ext;
+
+            @$var = move_uploaded_file($_FILES["foto"]["tmp_name"], "image/" . $nombre_nuevo);
+            if ($var) {
+                try {
+                    $consulta = "update usuarios set foto = '" . $nombre_nuevo . " ' where id_usuario = " . $ultimo_id;
+                    $resultado_foto = mysqli_query($conexion, $consulta);
+                } catch (Exception $e) {
+                    unlink("images/" . $nombre_nuevo);
+                    $mesaje_accion = "Usuario insertado con éxito, pero con la imagen por defecto.";
+                }
+            } else {
+                $mesaje_accion = "Usuario insertado con éxito, pero con la imagen por defecto.";
+            }
+        }
     }
 }
 
@@ -108,14 +166,20 @@ mysqli_close($conexion);
             color: blue;
             cursor: pointer;
         }
+
+        .error {
+            color: red;
+        }
     </style>
 </head>
 
 <body>
     <h1>Practica 8</h1>
-    <?php if (isset($_POST["btnDetalle"])): ?>
-        <?php require "vistas/vista-detalle.php" ?>
-    <?php endif; ?>
+    <?php
+    if (isset($_POST["btnDetalle"])):
+        require "vistas/vista-detalle.php";
+    endif;
+    ?>
 
     <?php if (isset($_POST["btnConfBorrar"])): ?>
         <p><strong><?= $_POST["hid-nombre"] ?></strong> se ha borrado con éxito.</p>
@@ -127,7 +191,7 @@ mysqli_close($conexion);
     <?php if (isset($_POST["btnBorrar"])): ?>
         <?php
         if (mysqli_num_rows($resultado_detalle)):
-            $tupla = mysqli_fetch_assoc($resultado_detalle)
+            $tupla = mysqli_fetch_assoc($resultado_detalle);
         ?>
             <h3>Borrado de usuario con el id: <?= $tupla["id_usuario"] ?></h3>
             <p>¿Estás seguro de que quieres borrar a <strong><?= $tupla["nombre"] ?></strong>?</p>
@@ -145,7 +209,49 @@ mysqli_close($conexion);
         endif;
         mysqli_free_result($resultado_detalle);
         ?>
-
+    <?php endif; ?>
+    <?php
+    // ? Formulario de crear usuario
+    // TODO Mostrar los errores
+    if (isset($_POST["btnCrear"]) || (isset($_POST["btnContCrear"]) && $error_form)): ?>
+        <h2>Agregar nuevo usuario</h2>
+        <form action="index.php" method="post" enctype="multipart/form-data">
+            <p>
+                <label for="nombre">Nombre: </label><br>
+                <input type="text" name="nombre" id="nombre" placeholder="Nombre..." value="<?php if (isset($_POST["nombre"])) echo $_POST["nombre"] ?>">
+            </p>
+            <?php
+            if (true) {
+                echo "<span class='error'></span>";
+            }
+            ?>
+            <p>
+                <label for="usuario">Usuario: </label><br>
+                <input type="text" name="usuario" id="usuario" placeholder="Usuario..." value="<?php if (isset($_POST["usuario"])) echo $_POST["usuario"] ?>">
+            </p>
+            <p>
+                <label for="clave">Clave: </label><br>
+                <input type="password" name="clave" id="clave" placeholder="Clave...">
+            </p>
+            <p>
+                <label for="dni">DNI: </label><br>
+                <input type="password" name="dni" id="dni" placeholder="DNI..." value="<?php if (isset($_POST["dni"])) echo $_POST["dni"] ?>">
+            </p>
+            <p>
+                <label for="sexo">Sexo: </label><br>
+                <input type="radio" name="sexo" id="hombre" value="hombre" checked><label for="hombre">Hombre</label>
+                <br>
+                <input type="radio" name="sexo" id="mujer" value="mujer"><label for="mujer">Mujer</label>
+            </p>
+            <p>
+                <label for="foto">Incluir mi foto (Archivo imagen con extension, Max: 500kB)</label><br>
+                <input type="file" name="foto" id="foto" accept="image/*">
+            </p>
+            <p>
+                <button type="submit" name="btnContCrear">Guardar Cambios</button>
+                <button type="submit">Atrás</button>
+            </p>
+        </form>
     <?php endif; ?>
     <h3>Listado de los usuarios</h3>
     <?php if (mysqli_num_rows($resultado_usuarios) > 0) : ?>
@@ -154,7 +260,11 @@ mysqli_close($conexion);
                 <th>#</th>
                 <th>Foto</th>
                 <th>Nombre</th>
-                <th>Usuarios+</th>
+                <th>
+                    <form action="index.php" method="post">
+                        <button type="submit" name="btnCrear" class="btn">Usuarios+</button>
+                    </form>
+                </th>
             </tr>
             <?php while ($tupla = mysqli_fetch_assoc($resultado_usuarios)) : ?>
                 <tr>
