@@ -22,7 +22,7 @@ try {
 }
 
 // Consulta para traer los datos del horario del profesor elegido (id = $_POST["profesor"])
-if (isset($_POST["btnVerHorario"])) {
+if (isset($_POST["profesor"])) {
     try {
         $consulta = "
             select dia, hora, grupos.nombre 
@@ -134,7 +134,7 @@ mysqli_close($conexion);
             <select name="profesor" id="profesor">
                 <?php
                 while ($tupla = mysqli_fetch_assoc($resultado_profesores)) {
-                    if (isset($_POST["btnVerHorario"]) && $_POST["profesor"] == $tupla["id_usuario"]) {
+                    if (isset($_POST["profesor"]) && $_POST["profesor"] == $tupla["id_usuario"]) {
                         echo "<option value=" . $tupla["id_usuario"] . " selected>" . $tupla["nombre"] . "</option>";
                         $nombreProfesor = $tupla["nombre"];
                     } else {
