@@ -1,0 +1,4 @@
+alumnos
+cod_alu;nombre;telefono;cod_postal
+101;Miguel Santos;955889977;29600
+102;Pepe Naranjo;600677588;29650

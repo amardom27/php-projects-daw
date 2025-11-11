@@ -357,6 +357,7 @@ mysqli_close($conexion);
                     <input type="radio" name="sexo" value="mujer" id="mujer" <?php if ($sexo == "mujer") echo "checked"; ?>> <label for="mujer"> Mujer</label>
                 </p>
                 <p>
+                    <img src="Img/<?= $foto_bd ?>" alt="Foto perfil" title="Foto perfil">
                     <label for="foto">Incluir mi foto (Archivo imagen con extensión, Máx. 500KB): </label>
                     <input type="file" name="foto" id="foto" accept="image/*">
                     <?php

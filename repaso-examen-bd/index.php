@@ -124,6 +124,9 @@ if (isset($_POST["btnEditar"]) || isset($_POST["btnQuitar"])) {
         die(error_page("<h1>No se ha podido realizar la consulta</h1><p>" . $e->getMessage() . "</p>"));
     }
 }
+
+// ! NO OLVDIDAR CERRAR
+mysqli_close($conexion);
 // TODO Funcionalidad del botón añadir
 ?>
 <!DOCTYPE html>

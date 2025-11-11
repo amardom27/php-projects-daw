@@ -12,7 +12,7 @@
     while ($tupla = mysqli_fetch_assoc($result_usuarios)) {
         echo "<tr>";
         echo "<td>" . $tupla["id_usuario"] . "</td>";
-        if ($tupla["foto"] == "no_imagen.jpg") {
+        if ($tupla["foto"] == NOMBRE_NO_IMAGEN_BD) {
             echo "<td><img src='Img/" . $tupla["foto"] . "' alt='Foto de perfil' title='Foto de Perfil'></td>";
         } else {
             echo "<td><form action='index.php' method='post'><button type='submit' name='btnBorrarFoto' value='" . $tupla["foto"] . "'><img src='Img/" . $tupla["foto"] . "' alt='Foto de perfil' title='Foto de Perfil'></button></form></td>";

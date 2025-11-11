@@ -38,9 +38,11 @@ try {
 }
 
 // Realizamos la consulta de los detalles si se ha pulsado el boton
-if (isset($_POST["btnDetalle"]) || isset($_POST["btnBorrar"])) {
+if (isset($_POST["btnDetalle"]) || isset($_POST["btnBorrar"]) || isset($_POST["btnEditar"])) {
     if (isset($_POST["btnDetalle"])) {
         $id_us = $_POST["btnDetalle"];
+    } elseif (isset($_POST["btnEditar"])) {
+        $id_us = $_POST["btnEditar"];
     } else {
         $id_us = $_POST["btnBorrar"];
     }
@@ -92,7 +94,7 @@ if (isset($_POST["btnContCrear"])) {
 
     if (!$error_form) {
         // Inserto con la imagen por defecto
-        // Si se ha subido una foto, movemos la foto y actulizamos el nombre de la foto en la base de datos (formato: img_id_extension)
+        // Si se ha subido una foto, movemos la foto y actulizamos el nombre de la foto en la base de datos (formato: img_id.extension)
 
         try {
             $consulta = "insert into usuarios (nombre, usuario, clave, dni, sexo, foto) 
@@ -188,6 +190,82 @@ mysqli_close($conexion);
         </form>
     <?php endif; ?>
 
+    <?php
+    if (isset($_POST["btnEditar"]) || (isset($_POST["btnConfEditar"]) && $error_form)) {
+        if (isset($_POST["btnEditar"])) {
+            // Cogemos los datos de la base de datos para rellenar el formulario
+            if (mysqli_num_rows($resultado_detalle) === 0) {
+                $error_no_existe = "El usuario ya no se encuentra registrado en la base de datos.";
+            } else {
+                $tupla = mysqli_fetch_assoc($resultado_detalle);
+
+                $id_usuario = $tupla["id_usuario"];
+                $nombre = $tupla["nombre"];
+                $usuario = $tupla["usuario"];
+                $dni = $tupla["dni"];
+                $sexo = $tupla["sexo"];
+                $foto_bd = $tupla["foto"];
+            }
+            // No olvidar hacer free
+            mysqli_free_result($resultado_detalle);
+        } else {
+            // Cogemos los datos de los campos $_POST
+            $id_usuario = $_POST["btnConfEditar"];
+            $nombre = $_POST["nombre"];
+            $usuario = $_POST["usuario"];
+            $dni = $_POST["dni"];
+            $sexo = $_POST["sexo"];
+            $foto_bd = $_POST["foto_bd"];
+        }
+
+        // Mostramos el formulario o el mensaje de error
+        if (isset($error_no_existe)) {
+    ?>
+            <p><?= $error_no_existe ?></p>
+            <form action="index.php" method="post">
+                <button type="submit">Atrás</button>
+            </form>
+        <?php
+        } else {
+        ?>
+            <h3>Borrado de usuario con el id: <?= $id_usuario ?></h3>
+            <form action="index.php" method="post" enctype="multipart/form-data">
+                <p>
+                    <label for="nombre">Nombre: </label><br>
+                    <input type="text" name="nombre" id="nombre" placeholder="Nombre..." value="<?= $nombre ?>">
+                </p>
+                <p>
+                    <label for="usuario">Usuario: </label><br>
+                    <input type="text" name="usuario" id="usuario" placeholder="Usuario..." value="<?= $usuario ?>">
+                </p>
+                <p>
+                    <label for="clave">Clave: </label><br>
+                    <input type="password" name="clave" id="clave" placeholder="Teclee nueva contraseña">
+                </p>
+                <p>
+                    <label for="dni">DNI: </label><br>
+                    <input type="text" name="dni" id="dni" placeholder="DNI..." value="<?= $dni ?>">
+                </p>
+                <p>
+                    <label for="sexo">Sexo: </label><br>
+                    <input type="radio" name="sexo" id="hombre" value="hombre" <?php if ($sexo == "hombre") echo "checked" ?>><label for="hombre">Hombre</label>
+                    <br>
+                    <input type="radio" name="sexo" id="mujer" value="mujer" <?php if ($sexo == "mujer") echo "checked" ?>><label for="mujer">Mujer</label>
+                </p>
+                <p>
+                    <label for="foto">Cambiar mi foto (Archivo imagen con extension, Max: 500kB)</label><br>
+                    <input type="file" name="foto" id="foto" accept="image/*">
+                </p>
+                <p>
+                    <button type="submit" name="btnContEditar" value="<?php echo $id_usuario ?>">Continuar</button>
+                    <button type="submit">Atrás</button>
+                </p>
+            </form>
+    <?php
+        }
+    }
+    ?>
+
     <?php if (isset($_POST["btnBorrar"])): ?>
         <?php
         if (mysqli_num_rows($resultado_detalle)):
@@ -204,7 +282,7 @@ mysqli_close($conexion);
         <?php
         else:
         ?>
-            <p>No hay ningún usuario en la base de datos para borrar.</p>
+            <p>El usuario ya no se encuentra registrado en la base de datos.</p>
         <?php
         endif;
         mysqli_free_result($resultado_detalle);
@@ -220,11 +298,6 @@ mysqli_close($conexion);
                 <label for="nombre">Nombre: </label><br>
                 <input type="text" name="nombre" id="nombre" placeholder="Nombre..." value="<?php if (isset($_POST["nombre"])) echo $_POST["nombre"] ?>">
             </p>
-            <?php
-            if (true) {
-                echo "<span class='error'></span>";
-            }
-            ?>
             <p>
                 <label for="usuario">Usuario: </label><br>
                 <input type="text" name="usuario" id="usuario" placeholder="Usuario..." value="<?php if (isset($_POST["usuario"])) echo $_POST["usuario"] ?>">

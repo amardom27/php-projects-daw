@@ -1,0 +1,6 @@
+asignaturas
+cod_asig;denominacion
+101;Inglés
+102;Matemáticas
+103;DWESE
+104;DWECL

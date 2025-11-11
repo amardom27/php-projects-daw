@@ -39,6 +39,22 @@ function repetido($conexion, $tabla, $columna, $valor) {
     return $respuesta;
 }
 
+// Funcion para saber si un valor esta repetido en la base de datos cuando pulsamos editar
+// Necesitamos la clave porque si miramos como antes siempre nos sale un usuario que es el mismo
+function repetido_editar($conexion, $tabla, $columna, $valor, $columna_id, $valor_id) {
+    try {
+        $consulta = "select " . $columna . " from " . $tabla . " where " . $columna . " = '" . $valor . "' and " . $columna_id . " <> " . $valor_id;
+        $resultado_repetido = mysqli_query($conexion, $consulta);
+        $respuesta = mysqli_num_rows($resultado_repetido) > 0;
+
+        // No olvidar liberar el resultado
+        mysqli_free_result($resultado_repetido);
+    } catch (Exception $e) {
+        $respuesta = $e->getMessage();
+    }
+    return $respuesta;
+}
+
 function dni_bien_escrito($dni) {
     $dni = strtoupper($dni);
     return strlen($dni) == 9 && is_numeric(substr($dni, 0, 8)) && (substr($dni, -1) >= 'A' && substr($dni, -1) < 'Z');
