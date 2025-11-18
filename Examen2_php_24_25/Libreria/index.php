@@ -13,14 +13,6 @@ function error_page($title, $body) {
     return $html;
 }
 
-function create_td($tupla) {
-    $html = "<td>";
-    $html .= "<img src='./Images/" . $tupla["portada"] . "' alt='Imagen portada'>";
-    $html .= "<p>" . $tupla["titulo"] . " - " . $tupla["precio"] . " €</p>";
-    $html .= "</td>";
-    return $html;
-}
-
 if (isset($_POST["btnSalir"])) {
     session_destroy();
     header("Location: index.php");
@@ -35,6 +27,7 @@ try {
     die(error_page("Página de inicio", "<p>Error en la conexión a la BD: " . $e->getMessage() . " </p>"));
 }
 
+// Se usa así porque se va a usar en ambas vistas
 try {
     $consulta = "select * from libros";
     $res_libros = mysqli_query($conexion, $consulta);
@@ -85,33 +78,69 @@ if (isset($_SESSION["id_usuario"])):
     $_SESSION["ultima_accion"] = time();
 
     if ($tupla_usu_log["tipo"] == "admin") {
-        mysqli_close($conexion);
-
         $_SESSION["id_usuario"] = $tupla_usu_log["id_usuario"];
         $_SESSION["ultima_accion"] = time();
         mysqli_close($conexion);
 
-        header("Location: admin/gest_admin.php");
+        header("Location: admin/gest_libros.php");
         exit;
     }
 
-    // ? VISTA LOGUEADO
+    // ? VISTA LOGUEADO NORMAL
 ?>
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="es">
 
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Página de inicio</title>
+        <style>
+            .error {
+                color: red;
+            }
+
+            .libros-cont {
+                display: flex;
+                flex-wrap: wrap;
+            }
+
+            .libro {
+                flex: 0 0 33%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .libro img {
+                width: 100%;
+                max-width: 24rem;
+            }
+
+            .mensaje {
+                color: blue;
+            }
+
+            .enlace {
+                background: none;
+                border: none;
+                text-decoration: underline;
+                color: blue;
+                cursor: pointer
+            }
+        </style>
     </head>
 
     <body>
         <h1>Librería</h1>
-        <p>Bienvenido</p>
         <form action="index.php" method="post">
-            <button type="submit" name="btnSalir">Salir</button>
+            <p>Bienvenido <strong><em><?= $tupla_usu_log["lector"] ?></em></strong> -
+                <button class="enlace" type="submit" name="btnSalir">Salir</button>
         </form>
+        </p>
+        <?php
+        require "vistas/vista_libros.php";
+        ?>
     </body>
 
     </html>
@@ -141,14 +170,18 @@ else:
                 $_SESSION["ultima_accion"] = time();
                 mysqli_close($conexion);
 
-                header("Location: index.php");
+                if ($tupla["tipo"] == "normal") {
+                    header("Location: index.php");
+                } else {
+                    header("Location: admin/gest_libros.php");
+                }
                 exit;
             } else {
                 $error_usuario = true;
             }
         }
     }
-    // ? VISTA NORMAL
+    // ? VISTA SIN LOGUEAR 
 ?>
     <!DOCTYPE html>
     <html lang="es">
@@ -217,17 +250,7 @@ else:
             echo "<p class='mensaje'>" . $_SESSION["seguridad"] . "</p>";
             session_destroy();
         }
-        ?>
-        <h2>Listado de los libros</h2>
-        <?php
-        echo "<div class='libros-cont'>";
-        foreach ($array_libros as $tupla) {
-            echo "<div class='libro'>";
-            echo "<img src='Images/" . $tupla["portada"] . "' alt='Imagen portada'>";
-            echo "<p>" . $tupla["titulo"] . " - " . $tupla["precio"] . " €</p>";
-            echo "</div>";
-        }
-        echo "</div>";
+        require "vistas/vista_libros.php";
         ?>
     </body>
 
