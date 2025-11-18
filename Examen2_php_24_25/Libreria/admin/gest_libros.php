@@ -22,7 +22,7 @@ function tiene_extension($nombre) {
 }
 
 function es_natural($number) {
-    return $number > 0 && is_int($number);
+    return $number > 0 && is_int((int)$number);
 }
 
 function es_numerico_pos($number) {
@@ -45,35 +45,6 @@ function esta_repetido($conexion, $ref) {
     return false;
 }
 
-function realizar_consulta($conexion, $consulta) {
-    $resultado = mysqli_query($conexion, $consulta);
-
-    if (!$resultado) {
-        throw new Exception("Error en la consulta: " . mysqli_error($conexion));
-    }
-
-    $datos = [];
-    while ($fila = mysqli_fetch_assoc($resultado)) {
-        $datos[] = $fila;
-    }
-
-    mysqli_free_result($resultado);
-
-    return $datos;
-}
-
-function ejecutar_modificacion($conexion, $consulta) {
-
-    $resultado = mysqli_query($conexion, $consulta);
-
-    if (!$resultado) {
-        throw new Exception("Error en la consulta: " . mysqli_error($conexion));
-    }
-
-    // Número de filas afectadas (INSERT, UPDATE, DELETE)
-    return mysqli_affected_rows($conexion);
-}
-
 if (isset($_POST["btnSalir"])) {
     var_dump("hola");
     session_destroy();
@@ -90,7 +61,6 @@ if (isset($_SESSION["id_usuario"])):
         die(error_page("Página de inicio", "<p>Error en la conexión a la BD: " . $e->getMessage() . " </p>"));
     }
 
-    // Se usa así porque se va a usar en ambas vistas
     try {
         $consulta = "select * from libros";
         $res_libros = mysqli_query($conexion, $consulta);
@@ -164,15 +134,72 @@ if (isset($_SESSION["id_usuario"])):
         $error_form = $error_ref || $error_titulo || $error_autor || $error_desc || $error_precio || $error_portada;
 
         if (!$error_form) {
+            $nombre_img = "no_imagen.jpg";
+            if ($_FILES["portada"] != "") {
+                $ext = tiene_extension($_FILES["portada"]["name"]);
+                $nombre_img = "img" . $_POST["ref"] . "." . $ext;
+            }
+
             try {
-                $consulta = "";
-                $libros = realizar_consulta($conexion, $consulta);
+                $consulta = "insert into `libros`(`referencia`, `titulo`, `autor`, `descripcion`, `precio`, `portada`) values ('" . $_POST["ref"] . "','" . $_POST["titulo"] . "','" . $_POST["autor"] . "','" . $_POST["desc"] . "','" . $_POST["precio"] . "','" . $nombre_img . "')";
+                mysqli_query($conexion, $consulta);
             } catch (Exception $e) {
                 session_destroy();
                 mysqli_close($conexion);
-                die("Error: " . $e->getMessage());
+                die(error_page("Página de inicio", "<p>Error en la consulta a la BD: " . $e->getMessage() . " </p>"));
             }
+            // Guardar la foto
+            move_uploaded_file($_FILES["portada"]["tmp_name"], "../Images/" . $nombre_img);
         }
+    }
+
+    if (isset($_POST["btnBorrar"])) {
+        $ref = $_POST["btnBorrar"];
+
+        // Obtenemos la imagen antes de borrar el libro
+        try {
+            $consulta = "select portada from libros where referencia = '" . $ref . "'";
+            $res_img = mysqli_query($conexion, $consulta);
+            $tupla_img = mysqli_fetch_assoc($res_img);
+            mysqli_free_result($res_img);
+
+            $imagen = $tupla_img["portada"];
+        } catch (Exception $e) {
+            session_destroy();
+            mysqli_close($conexion);
+            die(error_page("Página de inicio", "<p>Error en la consulta a la BD: " . $e->getMessage() . " </p>"));
+        }
+
+        // Borramos el libro
+        try {
+            $consulta = "delete from libros where referencia = '" . $ref . "'";
+            mysqli_query($conexion, $consulta);
+        } catch (Exception $e) {
+            session_destroy();
+            mysqli_close($conexion);
+            die(error_page("Página de inicio", "<p>Error en la consulta a la BD: " . $e->getMessage() . " </p>"));
+        }
+
+        // Borramos la imagen (si no es la imagen por defecto)
+        if ($imagen !== "no_imagen.jpg" && file_exists("../Images/$imagen")) {
+            unlink("../Images/$imagen");
+        }
+    }
+
+    // Cogemos los libros lo ultimo para ver reflejado los cambios en la base de datos 
+    try {
+        $consulta = "select * from libros";
+        $res_libros = mysqli_query($conexion, $consulta);
+
+        $array_libros = [];
+        while ($tupla = mysqli_fetch_assoc($res_libros)) {
+            $array_libros[] = $tupla;
+        }
+        mysqli_free_result($res_libros);
+    } catch (Exception $e) {
+        session_destroy();
+        mysqli_close($conexion);
+        die(error_page("Página de inicio", "<p>Error en la consulta a la BD: " . $e->getMessage() . " </p>"));
     }
 ?>
     <!DOCTYPE html>
@@ -242,6 +269,10 @@ if (isset($_SESSION["id_usuario"])):
             textarea {
                 width: 12rem;
             }
+
+            form {
+                margin-bottom: 0;
+            }
         </style>
     </head>
 
@@ -267,9 +298,11 @@ if (isset($_SESSION["id_usuario"])):
             echo "<td>" . $tupla["referencia"] . "</td>";
             echo "<td>" . $tupla["titulo"] . "</td>";
             echo "<td>";
-            echo "<button type='submit' name='btnBorrar' class='enlace'>Borrar</button>";
+            echo "<form action='gest_libros.php' method='post'>";
+            echo "<button type='submit' name='btnBorrar' class='enlace' value='" . $tupla["referencia"] . "'>Borrar</button>";
             echo " - ";
             echo "<button type='submit' name='btnEditar' class='enlace'>Editar</button>";
+            echo "</form>";
             echo "</td>";
             echo "</tr>";
         }
