@@ -21,12 +21,20 @@ function tiene_extension($nombre) {
     return false;
 }
 
+function mi_getimagesize($size, $file) {
+    $respuesta = false;
+    if ($size > 0) {
+        $respuesta = getimagesize($file);
+    }
+    return $respuesta;
+}
+
 function es_natural($number) {
     return $number > 0 && is_int((int)$number);
 }
 
 function es_numerico_pos($number) {
-    return $number > 0 && is_numeric($number);
+    return $number >= 0 && is_numeric($number);
 }
 
 function esta_repetido($conexion, $ref) {
@@ -127,7 +135,7 @@ if (isset($_SESSION["id_usuario"])):
         $error_desc = $_POST["desc"] == "";
         $error_precio = $_POST["precio"] == "" || !es_numerico_pos($_POST["precio"]);
         $error_portada = $_FILES["portada"]["name"] != "" && (
-            $_FILES["portada"]["error"] || $_FILES["portada"]["size"] > 750 * 1024 || !tiene_extension($_FILES["portada"]["name"])
+            $_FILES["portada"]["error"] || $_FILES["portada"]["size"] > 750 * 1024 || !tiene_extension($_FILES["portada"]["name"]) || !mi_getimagesize($_FILES["portada"]["size"], $_FILES["portada"]["tmp_name"])
         );
         //var_dump(mime_content_type($_FILES["portada"]["tmp_name"]));
 
@@ -140,21 +148,55 @@ if (isset($_SESSION["id_usuario"])):
                 $nombre_img = "img" . $_POST["ref"] . "." . $ext;
             }
 
+            // ? INSERT
             try {
-                $consulta = "insert into `libros`(`referencia`, `titulo`, `autor`, `descripcion`, `precio`, `portada`) values ('" . $_POST["ref"] . "','" . $_POST["titulo"] . "','" . $_POST["autor"] . "','" . $_POST["desc"] . "','" . $_POST["precio"] . "','" . $nombre_img . "')";
+                $consulta = "insert into `libros`(`referencia`, `titulo`, `autor`, `descripcion`, `precio`) values ('" . $_POST["ref"] . "','" . $_POST["titulo"] . "','" . $_POST["autor"] . "','" . $_POST["desc"] . "','" . $_POST["precio"] . "')";
                 mysqli_query($conexion, $consulta);
             } catch (Exception $e) {
                 session_destroy();
                 mysqli_close($conexion);
                 die(error_page("Página de inicio", "<p>Error en la consulta a la BD: " . $e->getMessage() . " </p>"));
             }
+
+            $mensaje_res = "Libro agregado correctamente.";
+
             // Guardar la foto
-            move_uploaded_file($_FILES["portada"]["tmp_name"], "../Images/" . $nombre_img);
+            @$var = move_uploaded_file($_FILES["portada"]["tmp_name"], "../Images/" . $nombre_img);
+            if ($var) {
+                try {
+                    $consulta = "update libros set portada='" . $nombre_img . "' where referencia=" . $_POST["ref"];
+                    mysqli_query($conexion, $consulta);
+                } catch (Exception $e) {
+                    unlink("Img/" . $nombre_img);
+                    $mensaje_res = "Libro agregado correctamente pero con la imagen por defecto.";
+                }
+            } else {
+                $mensaje_res = "Libro agregado correctamente pero con la imagen por defecto.";
+            }
+
+            $_SESSION["mensaje"] = $mensaje_res;
+            mysqli_close($conexion);
+            header("Location: gest_libros.php");
+            exit;
         }
     }
 
-    if (isset($_POST["btnBorrar"])) {
-        $ref = $_POST["btnBorrar"];
+    if (isset($_POST["btnDetalle"])) {
+        try {
+            $consulta = "select * from libros where referencia='" . $_POST["btnDetalle"] . "'";
+            $res_detalle = mysqli_query($conexion, $consulta);
+
+            $libro_detalle = mysqli_fetch_assoc($res_detalle);
+            mysqli_free_result($res_detalle);
+        } catch (Exception $e) {
+            session_destroy();
+            mysqli_close($conexion);
+            die(error_page("Página de inicio", "<p>Error en la consulta a la BD: " . $e->getMessage() . " </p>"));
+        }
+    }
+
+    if (isset($_POST["btnConfBorrar"])) {
+        $ref = $_POST["btnConfBorrar"];
 
         // Obtenemos la imagen antes de borrar el libro
         try {
@@ -171,6 +213,7 @@ if (isset($_SESSION["id_usuario"])):
         }
 
         // Borramos el libro
+        // ? DELETE 
         try {
             $consulta = "delete from libros where referencia = '" . $ref . "'";
             mysqli_query($conexion, $consulta);
@@ -184,6 +227,13 @@ if (isset($_SESSION["id_usuario"])):
         if ($imagen !== "no_imagen.jpg" && file_exists("../Images/$imagen")) {
             unlink("../Images/$imagen");
         }
+
+        $mensaje_res = "El libro con referencia " . $_POST["btnConfBorrar"] . " ha sido borrado con éxito.";
+
+        $_SESSION["mensaje"] = $mensaje_res;
+        mysqli_close($conexion);
+        header("Location: gest_libros.php");
+        exit;
     }
 
     // Cogemos los libros lo ultimo para ver reflejado los cambios en la base de datos 
@@ -273,6 +323,10 @@ if (isset($_SESSION["id_usuario"])):
             form {
                 margin-bottom: 0;
             }
+
+            .verde {
+                color: green;
+            }
         </style>
     </head>
 
@@ -283,6 +337,14 @@ if (isset($_SESSION["id_usuario"])):
                 <button class="enlace" type="submit" name="btnSalir">Salir</button>
             </p>
         </form>
+        <?php
+        if (isset($_SESSION["mensaje"])) {
+            echo "<p class='verde'>" . $_SESSION["mensaje"] . "</p>";
+
+            // Borrar el mensaje de accion, solo el mensaje!!
+            unset($_SESSION["mensaje"]);
+        }
+        ?>
 
         <h2>Listado de los libros</h2>
         <?php
@@ -296,7 +358,11 @@ if (isset($_SESSION["id_usuario"])):
         foreach ($array_libros as $tupla) {
             echo "<tr>";
             echo "<td>" . $tupla["referencia"] . "</td>";
-            echo "<td>" . $tupla["titulo"] . "</td>";
+            echo "<td>";
+            echo "<form action='gest_libros.php' method='post'>";
+            echo "<button type='submit' name='btnDetalle' class='enlace' value='" . $tupla["referencia"] . "'>" . $tupla["titulo"] . "</button>";
+            echo "</form>";
+            echo "</td>";
             echo "<td>";
             echo "<form action='gest_libros.php' method='post'>";
             echo "<button type='submit' name='btnBorrar' class='enlace' value='" . $tupla["referencia"] . "'>Borrar</button>";
@@ -308,95 +374,135 @@ if (isset($_SESSION["id_usuario"])):
         }
         echo "</table>";
         ?>
-
-        <h2>Agregar un nuevo libro</h2>
-        <form action="gest_libros.php" method="post" enctype="multipart/form-data">
-            <p>
-                <label for="ref">Referencia: </label>
-                <input type="text" name="ref" id="ref" value="<?php if (isset($_POST["btnEnviar"])) echo $_POST["ref"] ?>">
-                <?php
-                if (isset($_POST["btnAgregar"]) && $error_ref) {
-                    if ($_POST["ref"] == "") {
-                        echo "<span class='error'>* Campo obligatorio.</span>";
-                    } elseif (esta_repetido($conexion, $_POST["ref"])) {
-                        echo "<span class='error'>* Refencia repetida.</span>";
-                    } elseif (!es_natural($_POST["ref"])) {
-                        echo "<span class='error'>* Solo se admiten números y positivos.</span>";
-                    } else {
-                        echo "<span class='error'>* Error en la referencia.</span>";
+        <?php if (isset($libro_detalle)) {
+        ?>
+            <h2>Detalles del libro</h2>
+            <p><strong>Referencia:</strong> <?= $libro_detalle["referencia"] ?></p>
+            <p><strong>Título:</strong> <?= $libro_detalle["titulo"] ?></p>
+            <p><strong>Autor:</strong> <?= $libro_detalle["autor"] ?></p>
+            <p><strong>Descripción:</strong>
+                <?= $libro_detalle["descripcion"] ?>
+            </p>
+            <p><strong>Precio:</strong> <?= $libro_detalle["precio"] ?> €</p>
+            <p><strong>Portada:</strong><br>
+                <?php if ($libro_detalle["portada"] != "" && file_exists("../Images/" . $libro_detalle["portada"])): ?>
+                    <img src="../Images/<?= $libro_detalle["portada"] ?>" alt="Portada" style="max-width:200px;">
+                <?php else: ?>
+                    <em>No disponible</em>
+                <?php endif; ?>
+            </p>
+            <form action="gest_libros.php" method="post">
+                <p><button type="submit" name="btnVolver">Volver</button></p>
+            </form>
+        <?php
+        } elseif (isset($_POST["btnBorrar"])) {
+        ?>
+            <h2>Borrando el libro con referencia <?= $_POST["btnBorrar"] ?></h2>
+            <p>Continuar borrando el libro ?</p>
+            <form action="gest_libros.php" method="post">
+                <button type="submit" name="btnConfBorrar" value="<?= $_POST["btnBorrar"] ?>">Confirmar</button>
+                <button type="submit" name="btnVolver">Volver</button>
+            </form>
+        <?php
+        } elseif (isset($_POST["btnEditar"])) {
+        ?>
+        <?php
+        } else {
+        ?>
+            <h2>Agregar un nuevo libro</h2>
+            <form action="gest_libros.php" method="post" enctype="multipart/form-data">
+                <p>
+                    <label for="ref">Referencia: </label>
+                    <input type="text" name="ref" id="ref" value="<?php if (isset($_POST["btnAgregar"])) echo $_POST["ref"] ?>">
+                    <?php
+                    if (isset($_POST["btnAgregar"]) && $error_ref) {
+                        if ($_POST["ref"] == "") {
+                            echo "<span class='error'>* Campo obligatorio.</span>";
+                        } elseif (esta_repetido($conexion, $_POST["ref"])) {
+                            echo "<span class='error'>* Refencia repetida.</span>";
+                        } elseif (!es_natural($_POST["ref"])) {
+                            echo "<span class='error'>* Solo se admiten números y positivos.</span>";
+                        } else {
+                            echo "<span class='error'>* Error en la referencia.</span>";
+                        }
                     }
-                }
-                ?>
-            </p>
-            <p>
-                <label for="titulo">Título</label>
-                <input type="text" name="titulo" id="titulo">
-                <?php
-                if (isset($_POST["btnAgregar"]) && $error_titulo) {
-                    if ($_POST["titulo"] == "") {
-                        echo "<span class='error'>* Campo obligatorio.</span>";
+                    ?>
+                </p>
+                <p>
+                    <label for="titulo">Título</label>
+                    <input type="text" name="titulo" id="titulo" value="<?php if (isset($_POST["btnAgregar"])) echo $_POST["titulo"] ?>">
+                    <?php
+                    if (isset($_POST["btnAgregar"]) && $error_titulo) {
+                        if ($_POST["titulo"] == "") {
+                            echo "<span class='error'>* Campo obligatorio.</span>";
+                        }
                     }
-                }
-                ?>
-            </p>
-            <p>
-                <label for="autor">Autor</label>
-                <input type="text" name="autor" id="autor">
-                <?php
-                if (isset($_POST["btnAgregar"]) && $error_autor) {
-                    if ($_POST["autor"] == "") {
-                        echo "<span class='error'>* Campo obligatorio</span>";
+                    ?>
+                </p>
+                <p>
+                    <label for="autor">Autor</label>
+                    <input type="text" name="autor" id="autor" value="<?php if (isset($_POST["btnAgregar"])) echo $_POST["autor"] ?>">
+                    <?php
+                    if (isset($_POST["btnAgregar"]) && $error_autor) {
+                        if ($_POST["autor"] == "") {
+                            echo "<span class='error'>* Campo obligatorio</span>";
+                        }
                     }
-                }
-                ?>
-            </p>
-            <p>
-                <label for="desc">Descripción: </label>
-                <textarea name="desc" id="desc"></textarea>
-                <?php
-                if (isset($_POST["btnAgregar"]) && $error_desc) {
-                    if ($_POST["desc"] == "") {
-                        echo "<span class='error'>* Campo obligatorio</span>";
+                    ?>
+                </p>
+                <p>
+                    <label for="desc">Descripción: </label>
+                    <textarea name="desc" id="desc">
+                    <?php if (isset($_POST["btnAgregar"])) echo $_POST["desc"] ?>
+                </textarea>
+                    <?php
+                    if (isset($_POST["btnAgregar"]) && $error_desc) {
+                        if ($_POST["desc"] == "") {
+                            echo "<span class='error'>* Campo obligatorio</span>";
+                        }
                     }
-                }
-                ?>
-            </p>
-            <p>
-                <label for="precio">Precio: </label>
-                <input type="text" name="precio" id="precio">
-                <?php
-                if (isset($_POST["btnAgregar"]) && $error_precio) {
-                    if ($_POST["precio"] == "") {
-                        echo "<span class='error'>* Campo obligatorio</span>";
-                    } elseif (!es_numerico_pos($_POST["precio"])) {
-                        echo "<span class='error'>* Solo se admiten números y positivos.</span>";
-                    } else {
-                        echo "<span class='error'>* Error en el precio.</span>";
+                    ?>
+                </p>
+                <p>
+                    <label for="precio">Precio: </label>
+                    <input type="text" name="precio" id="precio" value="<?php if (isset($_POST["btnAgregar"])) echo $_POST["precio"] ?>">
+                    <?php
+                    if (isset($_POST["btnAgregar"]) && $error_precio) {
+                        if ($_POST["precio"] == "") {
+                            echo "<span class='error'>* Campo obligatorio</span>";
+                        } elseif (!es_numerico_pos($_POST["precio"])) {
+                            echo "<span class='error'>* Solo se admiten números y positivos.</span>";
+                        } else {
+                            echo "<span class='error'>* Error en el precio.</span>";
+                        }
                     }
-                }
-                ?>
-            </p>
-            <p>
-                <label for="portada">Portada: </label>
-                <input type="file" name="portada" id="portada">
-                <?php
-                if (isset($_POST["btnAgregar"]) && $error_portada) {
-                    if ($_FILES["portada"]["error"]) {
-                        echo "<span class='error'>* Error subiendo el archivo.</span>";
-                    } elseif ($_FILES["portada"]["size"] > 750 * 1024) {
-                        echo "<span class='error'>* Archivo demasiado grande. (Max: 750KB)</span>";
-                    } elseif (!tiene_extension($_FILES["portada"]["name"])) {
-                        echo "<span class='error'>* El archivo no tiene extensión.</span>";
-                    } else {
-                        echo "<span class='error'>* Error en el archivo.</span>";
+                    ?>
+                </p>
+                <p>
+                    <label for="portada">Portada: </label>
+                    <input type="file" name="portada" id="portada">
+                    <?php
+                    if (isset($_POST["btnAgregar"]) && $error_portada) {
+                        if ($_FILES["portada"]["error"]) {
+                            echo "<span class='error'>* Error subiendo el archivo.</span>";
+                        } elseif ($_FILES["portada"]["size"] > 750 * 1024) {
+                            echo "<span class='error'>* Archivo demasiado grande. (Max: 750KB)</span>";
+                        } elseif (!tiene_extension($_FILES["portada"]["name"])) {
+                            echo "<span class='error'>* El archivo no tiene extensión.</span>";
+                        } elseif (!mi_getimagesize($_FILES["portada"]["size"], $_FILES["portada"]["tmp_name"])) {
+                            echo "<span class='error'>* El archivo no es un archivo imagen.</span>";
+                        } else {
+                            echo "<span class='error'>* Error en el archivo.</span>";
+                        }
                     }
-                }
-                ?>
-            </p>
-            <p>
-                <button type="submit" name="btnAgregar">Agregar</button>
-            </p>
-        </form>
+                    ?>
+                </p>
+                <p>
+                    <button type="submit" name="btnAgregar">Agregar</button>
+                </p>
+            </form>
+        <?php
+        } ?>
     </body>
 
     </html>

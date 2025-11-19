@@ -114,8 +114,9 @@ if (isset($_SESSION["id_usuario"])):
 
             .libro img {
                 width: 100%;
-                max-width: 24rem;
+                max-width: 20rem;
                 flex: 1 1 auto;
+                object-fit: cover;
             }
 
             .mensaje {
@@ -210,8 +211,9 @@ else:
 
             .libro img {
                 width: 100%;
-                max-width: 24rem;
+                max-width: 20rem;
                 flex: 1 1 auto;
+                object-fit: cover;
             }
 
             .mensaje {
