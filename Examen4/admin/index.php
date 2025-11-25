@@ -50,6 +50,26 @@ if (isset($_SESSION["cod_usuario"])) {
         }
     }
 
+    if (isset($_POST["btnCalificar"])) {
+        echo $_POST["h_usu"];
+        echo " - ";
+        echo $_POST["asignatura"];
+
+        try {
+            $consulta = "insert into notas (cod_asig, cod_usu, nota) values ('" . $_POST["asignatura"] . "', '" . $_POST["h_usu"] . "', '0')";
+            mysqli_query($conexion, $consulta);
+        } catch (Exception $e) {
+            session_destroy();
+            mysqli_close($conexion);
+            die(error_page("Examen 4", "<h1>Error en la consulta a la BD</h1><p>" . $e->getMessage() . "</p>"));
+        }
+        $_SESSION["mensaje"] = "Asignatura calificada con un 0. Cambie el valor si es necesario.";
+        mysqli_close($conexion);
+
+        header("Location: index.php");
+        exit;
+    }
+
     if (isset($_POST["btnVerNotas"]) || isset($_SESSION["alumno_selec"])) {
         $cod_alu = $_POST["alumno"] ?? $_SESSION["alumno_selec"];
         $notas = obtener_notas_2($conexion, $cod_alu);
@@ -148,7 +168,9 @@ if (isset($_SESSION["cod_usuario"])) {
                         if (isset($nota["cod_usu"])) {
                             echo "<tr>";
                             echo "<td>" . $nota["denominacion"] . "</td>";
-                            if (isset($_POST["btnEditar"]) && $_POST["h_asig"] == $nota["cod_asig"] || (isset($_POST["btnCambiar"]) && $error_nota)) {
+                            if ((isset($_POST["btnEditar"]) && $_POST["h_asig"] == $nota["cod_asig"]) ||
+                                (isset($_POST["btnCambiar"]) && $error_nota && $_POST["h_asig"] == $nota["cod_asig"])
+                            ) {
                                 $value = $_POST["nota"] ?? $nota["nota"];
                                 echo "<td>";
                                 echo "<form action='index.php' method='post'>";
@@ -183,16 +205,6 @@ if (isset($_SESSION["cod_usuario"])) {
                                 echo "</td>";
                                 echo "</tr>";
                             }
-                            // echo "<td>";
-                            // echo "<form action='index.php' method='post'>";
-                            // echo "<button class='enlace' type='submit' name='btnEditar'>Editar</button>";
-                            // echo " - ";
-                            // echo "<button class='enlace' type='submit' name='btnBorrar'>Borrar</button>";
-                            // echo "<input type='hidden' name='h_usu' value='" . $nota["cod_usu"] . "'>";
-                            // echo "<input type='hidden' name='h_asig' value='" . $nota["cod_asig"] . "'>";
-                            // echo "</form>";
-                            // echo "</td>";
-                            // echo "</tr>";
                         } else {
                             $faltan_calif = true;
                         }
@@ -217,16 +229,12 @@ if (isset($_SESSION["cod_usuario"])) {
                             <?php
                             foreach ($notas as $nota) {
                                 if (!isset($nota["cod_usu"])) {
-                                    if (isset($_POST["btnCalificar"]) && $_POST["calificar"]) {
-                                        $asignatura_selec = $nota["denominacion"];
-                                        echo "<option selected value='" . $nota["cod_asig"] . "'>" . $nota["denominacion"] . "</option>";
-                                    } else {
-                                        echo "<option value='" . $nota["cod_asig"] . "'>" . $nota["denominacion"] . "</option>";
-                                    }
+                                    echo "<option value='" . $nota["cod_asig"] . "'>" . $nota["denominacion"] . "</option>";
                                 }
                             }
                             ?>
                         </select>
+                        <input type="hidden" name="h_usu" value="<?= $cod_alu ?>">
                         <button type="submit" name="btnCalificar">Calificar</button>
                     </form>
                     </p>
