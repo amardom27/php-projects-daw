@@ -118,7 +118,7 @@ function obtner_notas($conexion, $id_usu) {
     }
 }
 
-function obtner_notas_2($conexion, $id_usu) {
+function obtener_notas_2($conexion, $id_usu) {
     try {
         $consulta = "select asignaturas.cod_asig, asignaturas.denominacion, notas.cod_usu, notas.nota 
             from asignaturas left join notas 

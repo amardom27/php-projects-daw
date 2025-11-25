@@ -21,20 +21,20 @@ if (isset($_SESSION["cod_usuario"])) {
 
     $alumnos = obtener_alumnos($conexion);
 
-    // TODO Hacer que funcine el boton borrar
     if (isset($_POST["btnBorrar"])) {
         borrar_calificacion($conexion, $_POST["h_usu"], $_POST["h_asig"]);
-
         $_SESSION["mensaje"] = "Asignatura descalificada con éxito.";
-
-        $_POST["btnVerNotas"] = $_POST["h_usu"];
+        mysqli_close($conexion);
 
         header("Location: index.php");
         exit;
     }
 
-    if (isset($_POST["btnVerNotas"]) || isset($_POST["btnBorrar"])) {
-        $notas = obtner_notas_2($conexion, $_POST["alumno"]);
+    if (isset($_POST["btnVerNotas"]) || isset($_SESSION["alumno_selec"])) {
+        $cod_alu = $_POST["alumno"] ?? $_SESSION["alumno_selec"];
+        $notas = obtener_notas_2($conexion, $cod_alu);
+
+        $_SESSION["alumno_selec"] = $cod_alu;
     }
 ?>
     <!DOCTYPE html>
@@ -68,6 +68,14 @@ if (isset($_SESSION["cod_usuario"])) {
                 border-collapse: collapse;
                 text-align: center;
             }
+
+            .info {
+                color: blue;
+            }
+
+            td form {
+                margin-bottom: 0;
+            }
         </style>
     </head>
 
@@ -89,7 +97,7 @@ if (isset($_SESSION["cod_usuario"])) {
                 <select name="alumno" id="alumno">
                     <?php
                     foreach ($alumnos as $alumno) {
-                        if (isset($_POST["alumno"]) && $_POST["alumno"] == $alumno["cod_usu"]) {
+                        if (isset($_SESSION["alumno_selec"]) && $_SESSION["alumno_selec"] == $alumno["cod_usu"]) {
                             $alumno_selec = $alumno["nombre"];
                             echo "<option value='" . $alumno["cod_usu"] . "' selected>" . $alumno["nombre"] . "</option>";
                         } else {
@@ -111,7 +119,7 @@ if (isset($_SESSION["cod_usuario"])) {
                         <th>Acción</th>
                     </tr>
                     <?php
-                    $falta_calif = false;
+                    $faltan_calif = false;
                     foreach ($notas as $nota) {
                         if (isset($nota["cod_usu"])) {
                             echo "<tr>";
@@ -122,8 +130,8 @@ if (isset($_SESSION["cod_usuario"])) {
                             echo "<button class='enlace' type='submit' name='btnEditar'>Editar</button>";
                             echo " - ";
                             echo "<button class='enlace' type='submit' name='btnBorrar'>Borrar</button>";
-                            echo "<input type='hidden' name='h_usu' value='" . $nota["cod_usu"] . "'";
-                            echo "<input type='hidden' name='h_asig' value='" . $nota["cod_asig"] . "'";
+                            echo "<input type='hidden' name='h_usu' value='" . $nota["cod_usu"] . "'>";
+                            echo "<input type='hidden' name='h_asig' value='" . $nota["cod_asig"] . "'>";
                             echo "</form>";
                             echo "</td>";
                             echo "</tr>";
@@ -135,13 +143,13 @@ if (isset($_SESSION["cod_usuario"])) {
                 </table>
                 <?php
                 if (isset($_SESSION["mensaje"])) {
-                    echo "<p>" . $_SESSION["mensaje"] . "</p>";
+                    echo "<p class='info'>" . $_SESSION["mensaje"] . "</p>";
                     unset($_SESSION["mensaje"]);
                 }
                 ?>
                 <?php
                 if (!$faltan_calif) {
-                    echo "A $alumno_selec no quedan asignaturas por calificar.";
+                    echo "<p>A <strong>$alumno_selec</strong> no quedan asignaturas por calificar.</p>";
                 } else {
                 ?>
                     <p>
