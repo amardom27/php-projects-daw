@@ -22,12 +22,32 @@ if (isset($_SESSION["cod_usuario"])) {
     $alumnos = obtener_alumnos($conexion);
 
     if (isset($_POST["btnBorrar"])) {
-        borrar_calificacion($conexion, $_POST["h_usu"], $_POST["h_asig"]);
+        //borrar_calificacion($conexion, $_POST["h_usu"], $_POST["h_asig"]);
         $_SESSION["mensaje"] = "Asignatura descalificada con éxito.";
         mysqli_close($conexion);
 
         header("Location: index.php");
         exit;
+    }
+
+    if (isset($_POST["btnCambiar"])) {
+        $error_nota = $_POST["nota"] == "" || !is_numeric($_POST["nota"]) || $_POST["nota"] < 0 || $_POST["nota"] > 10;
+
+        if (!$error_nota) {
+            try {
+                $consulta = "update notas set nota = '" . $_POST["nota"] . "' where cod_usu = '" . $_POST["h_usu"] . "' and cod_asig = '" . $_POST["h_asig"] . "'";
+                mysqli_query($conexion, $consulta);
+            } catch (Exception $e) {
+                session_destroy();
+                mysqli_close($conexion);
+                die(error_page("Examen 4", "<h1>Error en la consulta a la BD</h1><p>" . $e->getMessage() . "</p>"));
+            }
+            $_SESSION["mensaje"] = "Nota actulizada con éxito.";
+            mysqli_close($conexion);
+
+            header("Location: index.php");
+            exit;
+        }
     }
 
     if (isset($_POST["btnVerNotas"]) || isset($_SESSION["alumno_selec"])) {
@@ -76,12 +96,16 @@ if (isset($_SESSION["cod_usuario"])) {
             td form {
                 margin-bottom: 0;
             }
+
+            .error {
+                color: red;
+            }
         </style>
     </head>
 
     <body>
-        <h1>Notas de los alumnos</h1>
         <form action="../index.php" method="post">
+            <h1>Notas de los alumnos</h1>
             <p>
                 Bienvenido <strong><?= $tupla_usu_log["usuario"] ?></strong> -
                 <button class='enlace' type="submit" name="btnSalir">Salir</button>
@@ -124,17 +148,51 @@ if (isset($_SESSION["cod_usuario"])) {
                         if (isset($nota["cod_usu"])) {
                             echo "<tr>";
                             echo "<td>" . $nota["denominacion"] . "</td>";
-                            echo "<td>" . $nota["nota"] . "</td>";
-                            echo "<td>";
-                            echo "<form action='index.php' method='post'>";
-                            echo "<button class='enlace' type='submit' name='btnEditar'>Editar</button>";
-                            echo " - ";
-                            echo "<button class='enlace' type='submit' name='btnBorrar'>Borrar</button>";
-                            echo "<input type='hidden' name='h_usu' value='" . $nota["cod_usu"] . "'>";
-                            echo "<input type='hidden' name='h_asig' value='" . $nota["cod_asig"] . "'>";
-                            echo "</form>";
-                            echo "</td>";
-                            echo "</tr>";
+                            if (isset($_POST["btnEditar"]) && $_POST["h_asig"] == $nota["cod_asig"] || (isset($_POST["btnCambiar"]) && $error_nota)) {
+                                $value = $_POST["nota"] ?? $nota["nota"];
+                                echo "<td>";
+                                echo "<form action='index.php' method='post'>";
+                                echo "<input type='text' name='nota' value='" . $value . "' placeholder='Teclee un número entre 0 y 10'>";
+                                if (isset($_POST["btnCambiar"]) && $error_nota) {
+                                    if ($_POST["nota"] == "") {
+                                        echo "<br><span class='error'>* Campo obligatorio.</span>";
+                                    } else {
+                                        echo "<br><span class='error'>* Número inválido.</span>";
+                                    }
+                                }
+                                echo "</td>";
+                                echo "<td>";
+                                echo "<button class='enlace' type='submit' name='btnCambiar'>Cambiar</button>";
+                                echo " - ";
+                                echo "<button class='enlace' type='submit' name='btnVolver'>Atrás</button>";
+                                echo "<input type='hidden' name='h_usu' value='" . $nota["cod_usu"] . "'>";
+                                echo "<input type='hidden' name='h_asig' value='" . $nota["cod_asig"] . "'>";
+                                echo "</form>";
+                                echo "</td>";
+                                echo "</tr>";
+                            } else {
+                                echo "<td>" . $nota["nota"] . "</td>";
+                                echo "<td>";
+                                echo "<form action='index.php' method='post'>";
+                                echo "<button class='enlace' type='submit' name='btnEditar'>Editar</button>";
+                                echo " - ";
+                                echo "<button class='enlace' type='submit' name='btnBorrar'>Borrar</button>";
+                                echo "<input type='hidden' name='h_usu' value='" . $nota["cod_usu"] . "'>";
+                                echo "<input type='hidden' name='h_asig' value='" . $nota["cod_asig"] . "'>";
+                                echo "</form>";
+                                echo "</td>";
+                                echo "</tr>";
+                            }
+                            // echo "<td>";
+                            // echo "<form action='index.php' method='post'>";
+                            // echo "<button class='enlace' type='submit' name='btnEditar'>Editar</button>";
+                            // echo " - ";
+                            // echo "<button class='enlace' type='submit' name='btnBorrar'>Borrar</button>";
+                            // echo "<input type='hidden' name='h_usu' value='" . $nota["cod_usu"] . "'>";
+                            // echo "<input type='hidden' name='h_asig' value='" . $nota["cod_asig"] . "'>";
+                            // echo "</form>";
+                            // echo "</td>";
+                            // echo "</tr>";
                         } else {
                             $faltan_calif = true;
                         }
@@ -153,7 +211,6 @@ if (isset($_SESSION["cod_usuario"])) {
                 } else {
                 ?>
                     <p>
-                        <input type="hidden" name="h_asig">
                     <form action="index.php" method="post">
                         <label>A <strong><?= $alumno_selec ?></strong> aún le quedan por calificar: </label>
                         <select name="asignatura" id="asignatura">

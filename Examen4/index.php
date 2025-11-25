@@ -95,6 +95,10 @@ if (isset($_SESSION["cod_usuario"])) {
             border-collapse: collapse;
             text-align: center;
         }
+
+        .error {
+            color: red;
+        }
     </style>
 </head>
 
@@ -135,7 +139,7 @@ if (isset($_SESSION["cod_usuario"])) {
                 <label for="usuario">Usuario: </label>
                 <input type="text" name="usuario" id="usuario" value="<?php if (isset($_POST["btnLogin"])) echo $_POST["usuario"] ?>">
                 <?php
-                if (isset($_POST["btnLogin"]) && $error_form) {
+                if (isset($_POST["btnLogin"]) && $error_usuario) {
                     if ($_POST["usuario"] == "") {
                         echo "<span class='error'>* Campo obligatorio.</span>";
                     } else {
@@ -148,7 +152,7 @@ if (isset($_SESSION["cod_usuario"])) {
                 <label for="clave">Contraseña: </label>
                 <input type="password" name="clave" id="clave">
                 <?php
-                if (isset($_POST["btnLogin"]) && $error_form) {
+                if (isset($_POST["btnLogin"]) && $error_clave) {
                     if ($_POST["clave"] == "") {
                         echo "<span class='error'>* Campo obligatorio.</span>";
                     }

@@ -165,3 +165,13 @@ function borrar_calificacion($conexion, $id_usu, $id_asig) {
         die(error_page("Examen 4", "<h1>Error en la consulta a la BD</h1><p>" . $e->getMessage() . "</p>"));
     }
 }
+function cambiar_calificacion($conexion, $id_usu, $id_asig) {
+    try {
+        $consulta = "delete from notas where cod_usu = '$id_usu' and cod_asig = '$id_asig'";
+        mysqli_query($conexion, $consulta);
+    } catch (Exception $e) {
+        session_destroy();
+        mysqli_close($conexion);
+        die(error_page("Examen 4", "<h1>Error en la consulta a la BD</h1><p>" . $e->getMessage() . "</p>"));
+    }
+}
