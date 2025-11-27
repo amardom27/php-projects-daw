@@ -13,6 +13,13 @@ const HORAS = [
     "5ºHora",
     "6ºHora",
 ];
+const DIAS = [
+    1 => "Lunes",
+    "Martes",
+    "Miércoles",
+    "Jueves",
+    "Viernes"
+];
 
 require "./src/fun_cte.php";
 
@@ -28,6 +35,34 @@ if (isset($_POST["btnSalir"])) {
 if (isset($_SESSION["id_usuario"])) {
     $usuario = comprobarBaneo($conexion, $_SESSION["id_usuario"], "index.php");
     comprobarInactividad($conexion, "index.php");
+
+    if (isset($_POST["btnEquipo"])) {
+        try {
+            $consulta = "select id_hor_gua from horario_guardias where usuario = '" . $_SESSION["id_usuario"] . "' and dia = '" . $_POST["h_dia"] . "' and hora = '" . $_POST["h_hora"] . "'";
+            $res_equipo = mysqli_query($conexion, $consulta);
+
+            $esta = mysqli_fetch_assoc($res_equipo);
+            mysqli_free_result($res_equipo);
+        } catch (Exception $e) {
+            session_destroy();
+            mysqli_close($conexion);
+            die(error_page("Gestión de Guardias", "<h1>Error en la consulta a la BD</h1><p>" . $e->getMessage() . "</p>"));
+        }
+
+        if ($esta) {
+            try {
+                $consulta = "select id_usuario, nombre from usuarios join horario_guardias on usuarios.id_usuario = horario_guardias.usuario where horario_guardias.dia = '" . $_POST["h_dia"] . "' and horario_guardias.hora = '" . $_POST["h_hora"] . "'";
+                $res_guardia = mysqli_query($conexion, $consulta);
+
+                $profesores = mysqli_fetch_all($res_guardia, MYSQLI_ASSOC);
+                mysqli_free_result($res_guardia);
+            } catch (Exception $e) {
+                session_destroy();
+                mysqli_close($conexion);
+                die(error_page("Gestión de Guardias", "<h1>Error en la consulta a la BD</h1><p>" . $e->getMessage() . "</p>"));
+            }
+        }
+    }
 } else {
     if (isset($_POST["btnLogin"])) {
         $error_usuario = $_POST["usuario"] == "";
@@ -78,6 +113,10 @@ if (isset($_SESSION["id_usuario"])) {
             cursor: pointer;
         }
 
+        .info {
+            color: blue;
+        }
+
         table,
         th,
         td {
@@ -109,35 +148,46 @@ if (isset($_SESSION["id_usuario"])) {
             </p>
         </form>
         <h2>Equipos de guardia del IES Mar de Alboran</h2>
-        <form action="index.php" method="post">
-            <table>
-                <tr>
-                    <th></th>
-                    <th>Lunes</th>
-                    <th>Martes</th>
-                    <th>Miercoles</th>
-                    <th>Jueves</th>
-                    <th>Viernes</th>
-                </tr>
-                <?php
-                for ($i = 0; $i < 6; $i++) {
-                    if ($i == 3) {
-                        echo "<tr><td colspan='7'>Recero</td></tr>";
-                    }
-                    echo "<tr>";
-                    echo "<td>" . HORAS[$i] . "</td>";
-                    for ($j = 1; $j < 6; $j++) {
-                        echo "<td>";
-                        echo "<button class='enlace' type='submit' name='btnEquipo'>Equipo " . ($i * 5) + $j . "</button>";
-                        echo "<input type='hidden' name='h_dia' value='" . $j . "'>";
-                        echo "<input type='hidden' name='h_hora' value='" . ($i + 1)  . "'>";
-                        echo "</td>";
-                    }
-                    echo "</tr>";
+        <table>
+            <tr>
+                <th></th>
+                <th>Lunes</th>
+                <th>Martes</th>
+                <th>Miercoles</th>
+                <th>Jueves</th>
+                <th>Viernes</th>
+            </tr>
+            <?php
+            for ($i = 0; $i < 6; $i++) {
+                if ($i == 3) {
+                    echo "<tr><td colspan='7'>Recero</td></tr>";
                 }
-                ?>
-            </table>
-        </form>
+                echo "<tr>";
+                echo "<td>" . HORAS[$i] . "</td>";
+                for ($j = 1; $j < 6; $j++) {
+                    echo "<td>";
+                    echo "<form action='index.php' method='post'>";
+                    echo "<button class='enlace' type='submit' name='btnEquipo' value='" . ($i * 5) + $j . "'>Equipo " . ($i * 5) + $j . "</button>";
+                    echo "<input type='hidden' name='h_dia' value='" . $j . "'>";
+                    echo "<input type='hidden' name='h_hora' value='" . ($i + 1)  . "'>";
+                    echo "</form>";
+                    echo "</td>";
+                }
+                echo "</tr>";
+            }
+            ?>
+        </table>
+        <?php if (isset($_POST["btnEquipo"])) {
+            $hora = $_POST["h_hora"] - 1;
+
+            echo "<h2>Equipo de guardia " . $_POST["btnEquipo"] . "</h2>";
+            echo "<h3>" . DIAS[$_POST["h_dia"]] . " a " . HORAS[$hora] . "</h3>";
+
+            if (!$esta) {
+                echo "<p>Atención, usted no es encuentra de guardia el </p>";
+            }
+        }
+        ?>
     <?php
     } else {
     ?>
@@ -162,6 +212,12 @@ if (isset($_SESSION["id_usuario"])) {
                 if ($_POST["clave"] == "") {
                     echo "<span class='error'>* Campo obligatorio.</span>";
                 }
+            }
+            ?>
+            <?php
+            if (isset($_SESSION["seguridad"])) {
+                echo "<p class='info'>" . $_SESSION["seguridad"] . "</p>";
+                unset($_SESSION["seguridad"]);
             }
             ?>
             <p>
