@@ -36,7 +36,7 @@ if (isset($_SESSION["id_usuario"])) {
     $usuario = comprobarBaneo($conexion, $_SESSION["id_usuario"], "index.php");
     comprobarInactividad($conexion, "index.php");
 
-    if (isset($_POST["btnEquipo"])) {
+    if (isset($_POST["btnEquipo"]) || isset($_POST["btnProfesor"])) {
         try {
             $consulta = "select id_hor_gua from horario_guardias where usuario = '" . $_SESSION["id_usuario"] . "' and dia = '" . $_POST["h_dia"] . "' and hora = '" . $_POST["h_hora"] . "'";
             $res_equipo = mysqli_query($conexion, $consulta);
@@ -51,7 +51,7 @@ if (isset($_SESSION["id_usuario"])) {
 
         if ($esta) {
             try {
-                $consulta = "select id_usuario, nombre from usuarios join horario_guardias on usuarios.id_usuario = horario_guardias.usuario where horario_guardias.dia = '" . $_POST["h_dia"] . "' and horario_guardias.hora = '" . $_POST["h_hora"] . "'";
+                $consulta = "select id_usuario, nombre, usuarios.usuario, email from usuarios join horario_guardias on usuarios.id_usuario = horario_guardias.usuario where horario_guardias.dia = '" . $_POST["h_dia"] . "' and horario_guardias.hora = '" . $_POST["h_hora"] . "'";
                 $res_guardia = mysqli_query($conexion, $consulta);
 
                 $profesores = mysqli_fetch_all($res_guardia, MYSQLI_ASSOC);
@@ -128,10 +128,14 @@ if (isset($_SESSION["id_usuario"])) {
         }
 
         table {
-            width: 95%;
-            margin: 0 auto;
+            width: 100%;
             border-collapse: collapse;
             text-align: center;
+        }
+
+        .text-start {
+            text-align: start;
+            padding-left: 1rem;
         }
     </style>
 </head>
@@ -148,7 +152,7 @@ if (isset($_SESSION["id_usuario"])) {
             </p>
         </form>
         <h2>Equipos de guardia del IES Mar de Alboran</h2>
-        <table>
+        <table class="w-95">
             <tr>
                 <th></th>
                 <th>Lunes</th>
@@ -177,14 +181,69 @@ if (isset($_SESSION["id_usuario"])) {
             }
             ?>
         </table>
-        <?php if (isset($_POST["btnEquipo"])) {
+        <?php if (isset($_POST["btnEquipo"]) || isset($_POST["btnProfesor"])) {
             $hora = $_POST["h_hora"] - 1;
+            $num_equipo = $_POST["btnEquipo"] ?? $_POST["btnProfesor"];
 
-            echo "<h2>Equipo de guardia " . $_POST["btnEquipo"] . "</h2>";
+            echo "<h2>Equipo de guardia " . $num_equipo . "</h2>";
             echo "<h3>" . DIAS[$_POST["h_dia"]] . " a " . HORAS[$hora] . "</h3>";
 
             if (!$esta) {
-                echo "<p>Atención, usted no es encuentra de guardia el </p>";
+                echo "<p>Atención, usted no es encuentra de guardia el " . DIAS[$_POST["h_dia"]] . " a " . HORAS[$hora] . "</p>";
+            } else {
+                $id_prof_seleccionado = $_POST["h_prof"] ?? "";
+
+                $idx_prof_seleccionado = "";
+                if (isset($_POST["btnProfesor"])) {
+                    for ($i = 0; $i < count($profesores); $i++) {
+                        if ($profesores[$i]["id_usuario"] == $_POST["h_prof"]) {
+                            $idx_prof_seleccionado = $i;
+                            break;
+                        }
+                    }
+                }
+
+                echo "<table>";
+                echo "<tr>";
+                echo "<th>Profesor de Guardia</th>";
+                echo "<th>Información del profesor con id: $id_prof_seleccionado</th>";
+                echo "</tr>";
+
+                echo "<tr>";
+                echo "<td>";
+                echo "<form action='index.php' method='post'>";
+                echo "<button class='enlace' type='submit' name='btnProfesor' value='" . $num_equipo . "'>" . $profesores[0]["nombre"] . "</button>";
+                echo "<input type='hidden' name='h_dia' value='" . $_POST["h_dia"] . "'>";
+                echo "<input type='hidden' name='h_hora' value='" . $_POST["h_hora"] . "'>";
+                echo "<input type='hidden' name='h_prof' value='" . $profesores[0]["id_usuario"] . "'>";
+                echo "</form>";
+                echo "</td>";
+
+                echo "<td rowspan='" . count($profesores) . "' class='text-start'>";
+                // ! Cuidado con las evaluaciones que hace php en los ifs, "" == false
+                if ($idx_prof_seleccionado !== "") {
+                    echo "<p><strong>Nombre:</strong> " . $profesores[$idx_prof_seleccionado]["nombre"] . "</p>";
+                    echo "<p><strong>Usuario:</strong> " . $profesores[$idx_prof_seleccionado]["usuario"] . "</p>";
+                    echo "<p><strong>Clave:</strong></p>";
+                    echo "<p><strong>Email:</strong> " . $profesores[$idx_prof_seleccionado]["email"] . "</p>";
+                }
+                echo "</td>";
+                echo "</tr>";
+
+                for ($i = 1; $i < count($profesores); $i++) {
+                    echo "<tr>";
+                    echo "<td>";
+                    echo "<form action='index.php' method='post'>";
+                    echo "<button class='enlace' type='submit' name='btnProfesor' value='" . $num_equipo . "'>" . $profesores[$i]["nombre"] . "</button>";
+                    echo "<input type='hidden' name='h_dia' value='" . $_POST["h_dia"] . "'>";
+                    echo "<input type='hidden' name='h_hora' value='" . $_POST["h_hora"] . "'>";
+                    echo "<input type='hidden' name='h_prof' value='" . $profesores[$i]["id_usuario"] . "'>";
+                    echo "</form>";
+                    echo "</td>";
+                    echo "</tr>";
+                }
+
+                echo "</table>";
             }
         }
         ?>
