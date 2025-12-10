@@ -1426,6 +1426,7 @@ INSERT INTO `usuarios` (`id_usuario`, `nombre`, `usuario`, `clave`, `email`, `ti
 (8, 'Apellido1 Apellido2, NOMBRE8', 'profesor8', 'e10adc3949ba59abbe56e057f20f883e', NULL, 'normal'),
 (9, 'Apellido1 Apellido2, NOMBRE9', 'profesor9', 'e10adc3949ba59abbe56e057f20f883e', NULL, 'normal'),
 (10, 'Apellido1 Apellido2, NOMBRE10', 'profesor10', 'e10adc3949ba59abbe56e057f20f883e', NULL, 'normal'),
+(11, 'Apellido1 Apellido2, NOMBRE10', 'profesor11', 'e10adc3949ba59abbe56e057f20f883e', NULL, 'normal'),
 (12, 'Apellido1 Apellido2, NOMBRE12', 'profesor12', 'e10adc3949ba59abbe56e057f20f883e', NULL, 'normal'),
 (13, 'Apellido1 Apellido2, NOMBRE13', 'profesor13', 'e10adc3949ba59abbe56e057f20f883e', NULL, 'normal'),
 (14, 'Apellido1 Apellido2, NOMBRE14', 'profesor14', 'e10adc3949ba59abbe56e057f20f883e', NULL, 'normal'),
